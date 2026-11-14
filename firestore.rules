@@ -1,0 +1,387 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'uni.adf2279@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    // Entity validators
+    function isValidAdminRecord(data) {
+      return data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+             (!('grantedBy' in data) || (data.grantedBy is string && data.grantedBy.size() <= 128));
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             data.age is int && data.age >= 18 && data.age <= 120 &&
+             data.heightCm is number && data.heightCm >= 100 && data.heightCm <= 250 &&
+             data.weightKg is number && data.weightKg >= 30 && data.weightKg <= 300 &&
+             data.activityLevel in ['sedentary', 'light', 'moderate', 'active', 'athlete'] &&
+             data.fitnessGoal in ['fat_loss', 'muscle_gain', 'endurance', 'flexibility', 'general_wellness'] &&
+             data.nutritionPreference in ['balanced', 'high_protein', 'vegetarian', 'mediterranean', 'low_carb'] &&
+             data.experienceLevel in ['beginner', 'intermediate', 'advanced'] &&
+             (!('healthNotes' in data) || (data.healthNotes is string && data.healthNotes.size() <= 500)) &&
+             data.parqAnswers is list && data.parqAnswers.size() == 7 && data.parqAnswers[0] is bool &&
+             data.parqFlagged is bool &&
+             data.selectedPlanDurationWeeks is int && data.selectedPlanDurationWeeks in [4, 8, 12, 26, 52] &&
+             data.preferredLanguage in ['ar', 'en'] &&
+             data.themeMode in ['system', 'light', 'dark'];
+    }
+
+    function isValidWorkoutLog(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.dateIso is string && data.dateIso.size() >= 4 && data.dateIso.size() <= 20 &&
+             data.workoutTitle is string && data.workoutTitle.size() >= 1 && data.workoutTitle.size() <= 120 &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 300 &&
+             data.caloriesBurned is int && data.caloriesBurned >= 0 && data.caloriesBurned <= 3000 &&
+             data.completed is bool &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 300));
+    }
+
+    function isValidMeasurementLog(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.dateIso is string && data.dateIso.size() >= 4 && data.dateIso.size() <= 20 &&
+             data.weightKg is number && data.weightKg >= 30 && data.weightKg <= 300 &&
+             (!('waistCm' in data) || (data.waistCm is number && data.waistCm >= 40 && data.waistCm <= 200)) &&
+             (!('chestCm' in data) || (data.chestCm is number && data.chestCm >= 50 && data.chestCm <= 200)) &&
+             (!('bodyFatPercent' in data) || (data.bodyFatPercent is number && data.bodyFatPercent >= 3 && data.bodyFatPercent <= 70)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 200));
+    }
+
+    function isValidFitnessPlan(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.durationWeeks is int && data.durationWeeks in [4, 8, 12, 26, 52] &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 1000 &&
+             data.weeklyScheduleJson is string && data.weeklyScheduleJson.size() >= 2 && data.weeklyScheduleJson.size() <= 20000 &&
+             data.dailyMealsJson is string && data.dailyMealsJson.size() >= 2 && data.dailyMealsJson.size() <= 20000 &&
+             (!('adjustmentNotes' in data) || (data.adjustmentNotes is string && data.adjustmentNotes.size() <= 1000)) &&
+             data.reviewStatus in ['pending_review', 'approved', 'rejected', 'needs_revision'] &&
+             (!('adminFeedback' in data) || (data.adminFeedback is string && data.adminFeedback.size() <= 500)) &&
+             data.version is int && data.version >= 1 && data.version <= 1000 &&
+             (!('parqSafetyNote' in data) || (data.parqSafetyNote is string && data.parqSafetyNote.size() <= 500));
+    }
+
+    function isValidExerciseItem(data) {
+      return data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 100 &&
+             data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 100 &&
+             data.descriptionEn is string && data.descriptionEn.size() >= 1 && data.descriptionEn.size() <= 500 &&
+             data.descriptionAr is string && data.descriptionAr.size() >= 1 && data.descriptionAr.size() <= 500 &&
+             data.targetMusclesEn is string && data.targetMusclesEn.size() >= 1 && data.targetMusclesEn.size() <= 120 &&
+             data.targetMusclesAr is string && data.targetMusclesAr.size() >= 1 && data.targetMusclesAr.size() <= 120 &&
+             data.difficulty in ['beginner', 'intermediate', 'advanced'] &&
+             data.repsOrDuration is string && data.repsOrDuration.size() >= 1 && data.repsOrDuration.size() <= 60 &&
+             data.equipmentEn is string && data.equipmentEn.size() >= 1 && data.equipmentEn.size() <= 100 &&
+             data.equipmentAr is string && data.equipmentAr.size() >= 1 && data.equipmentAr.size() <= 100 &&
+             data.instructionsEn is string && data.instructionsEn.size() >= 1 && data.instructionsEn.size() <= 1000 &&
+             data.instructionsAr is string && data.instructionsAr.size() >= 1 && data.instructionsAr.size() <= 1000 &&
+             data.mistakesEn is string && data.mistakesEn.size() >= 1 && data.mistakesEn.size() <= 600 &&
+             data.mistakesAr is string && data.mistakesAr.size() >= 1 && data.mistakesAr.size() <= 600 &&
+             data.animationType in ['squat', 'pushup', 'plank', 'lunge', 'jumping_jack', 'bridge'] &&
+             data.isActive is bool;
+    }
+
+    function isValidMealItem(data) {
+      return data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 100 &&
+             data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 100 &&
+             data.ingredientsEn is string && data.ingredientsEn.size() >= 1 && data.ingredientsEn.size() <= 600 &&
+             data.ingredientsAr is string && data.ingredientsAr.size() >= 1 && data.ingredientsAr.size() <= 600 &&
+             data.calories is int && data.calories >= 0 && data.calories <= 5000 &&
+             data.proteinGrams is int && data.proteinGrams >= 0 && data.proteinGrams <= 500 &&
+             data.carbsGrams is int && data.carbsGrams >= 0 && data.carbsGrams <= 500 &&
+             data.fatsGrams is int && data.fatsGrams >= 0 && data.fatsGrams <= 500 &&
+             data.prepStepsEn is string && data.prepStepsEn.size() >= 1 && data.prepStepsEn.size() <= 1000 &&
+             data.prepStepsAr is string && data.prepStepsAr.size() >= 1 && data.prepStepsAr.size() <= 1000 &&
+             data.imageKey in ['protein_bowl', 'salmon', 'hero_fitness'] &&
+             data.category in ['breakfast', 'lunch', 'dinner', 'snack'] &&
+             data.isActive is bool;
+    }
+
+    function isValidPlanTemplate(data) {
+      return data.code in ['4w', '8w', '12w', '6m', '12m'] &&
+             data.durationWeeks is int && data.durationWeeks in [4, 8, 12, 26, 52] &&
+             data.titleEn is string && data.titleEn.size() >= 1 && data.titleEn.size() <= 80 &&
+             data.titleAr is string && data.titleAr.size() >= 1 && data.titleAr.size() <= 80 &&
+             data.descriptionEn is string && data.descriptionEn.size() >= 1 && data.descriptionEn.size() <= 300 &&
+             data.descriptionAr is string && data.descriptionAr.size() >= 1 && data.descriptionAr.size() <= 300 &&
+             data.isEnabled is bool &&
+             data.sortOrder is int && data.sortOrder >= 0 && data.sortOrder <= 100;
+    }
+
+    function isValidCoachRequest(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userDisplayName is string && data.userDisplayName.size() >= 1 && data.userDisplayName.size() <= 80 &&
+             data.goalSummary is string && data.goalSummary.size() >= 1 && data.goalSummary.size() <= 300 &&
+             data.preferredContactMethod in ['in_app_note', 'email', 'phone_callback'] &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 600)) &&
+             data.status in ['pending', 'in_review', 'contacted', 'closed'] &&
+             (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 500));
+    }
+
+    function isValidAuditLog(data) {
+      return data.actorUid is string && data.actorUid.size() >= 1 && data.actorUid.size() <= 128 &&
+             data.actorEmail is string && data.actorEmail.size() <= 160 &&
+             data.action is string && data.action.size() >= 1 && data.action.size() <= 80 &&
+             data.targetCollection is string && data.targetCollection.size() >= 1 && data.targetCollection.size() <= 60 &&
+             data.targetId is string && data.targetId.size() >= 1 && data.targetId.size() <= 128 &&
+             data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 400 &&
+             data.version is int && data.version >= 1;
+    }
+
+    // 1. Trusted Admin Registry
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+                       isValidId(adminUid) &&
+                       incoming().uid == adminUid &&
+                       incoming().keys().hasAll(['uid', 'email', 'createdAt']) &&
+                       incoming().keys().hasOnly(['uid', 'email', 'grantedBy', 'createdAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidAdminRecord(incoming());
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminUid) && request.auth.uid != adminUid;
+    }
+
+    // 2. Adult-Only User Profiles (18+) & Subcollections
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'age', 'heightCm', 'weightKg', 'activityLevel', 'fitnessGoal', 'nutritionPreference', 'experienceLevel', 'parqAnswers', 'parqFlagged', 'selectedPlanDurationWeeks', 'preferredLanguage', 'themeMode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'age', 'heightCm', 'weightKg', 'activityLevel', 'fitnessGoal', 'nutritionPreference', 'experienceLevel', 'healthNotes', 'parqAnswers', 'parqFlagged', 'selectedPlanDurationWeeks', 'preferredLanguage', 'themeMode', 'createdAt', 'updatedAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidUserProfile(incoming());
+
+      allow update: if (isOwner(userId) || isAdmin()) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'age', 'heightCm', 'weightKg', 'activityLevel', 'fitnessGoal', 'nutritionPreference', 'experienceLevel', 'healthNotes', 'parqAnswers', 'parqFlagged', 'selectedPlanDurationWeeks', 'preferredLanguage', 'themeMode', 'updatedAt']);
+
+      allow delete: if isAdmin() && isValidId(userId);
+
+      // Workout Logs Subcollection
+      match /workoutLogs/{logId} {
+        allow get: if isValidId(userId) && isValidId(logId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(logId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'dateIso', 'workoutTitle', 'durationMinutes', 'caloriesBurned', 'completed', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateIso', 'workoutTitle', 'durationMinutes', 'caloriesBurned', 'completed', 'notes', 'createdAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidWorkoutLog(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(logId) &&
+                         isValidWorkoutLog(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['workoutTitle', 'durationMinutes', 'caloriesBurned', 'completed', 'notes']);
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(userId) && isValidId(logId);
+      }
+
+      // Measurements Subcollection
+      match /measurements/{measurementId} {
+        allow get: if isValidId(userId) && isValidId(measurementId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(measurementId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['userId', 'dateIso', 'weightKg', 'createdAt']) &&
+                         incoming().keys().hasOnly(['userId', 'dateIso', 'weightKg', 'waistCm', 'chestCm', 'bodyFatPercent', 'notes', 'createdAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidMeasurementLog(incoming());
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(measurementId) &&
+                         isValidMeasurementLog(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['weightKg', 'waistCm', 'chestCm', 'bodyFatPercent', 'notes']);
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(userId) && isValidId(measurementId);
+      }
+
+      // Personalized AI Plans Subcollection
+      match /plans/{planId} {
+        allow get: if isValidId(userId) && isValidId(planId) && (isOwner(userId) || isAdmin());
+        allow list: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) &&
+                         isValidId(userId) &&
+                         isValidId(planId) &&
+                         incoming().userId == userId &&
+                         (isAdmin() || incoming().reviewStatus == 'pending_review') &&
+                         incoming().keys().hasAll(['userId', 'durationWeeks', 'title', 'summary', 'weeklyScheduleJson', 'dailyMealsJson', 'reviewStatus', 'version', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'durationWeeks', 'title', 'summary', 'weeklyScheduleJson', 'dailyMealsJson', 'adjustmentNotes', 'reviewStatus', 'adminFeedback', 'version', 'parqSafetyNote', 'createdAt', 'updatedAt']) &&
+                         isValidTimestamp(incoming().createdAt) &&
+                         isValidTimestamp(incoming().updatedAt) &&
+                         isValidFitnessPlan(incoming());
+        allow update: if isSignedIn() &&
+                         isValidId(userId) &&
+                         isValidId(planId) &&
+                         isValidFitnessPlan(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidTimestamp(incoming().updatedAt) && (
+                           (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'weeklyScheduleJson', 'dailyMealsJson', 'adjustmentNotes', 'reviewStatus', 'adminFeedback', 'version', 'parqSafetyNote', 'updatedAt'])) ||
+                           (isOwner(userId) &&
+                            existing().reviewStatus != 'rejected' &&
+                            incoming().reviewStatus == existing().reviewStatus &&
+                            (!('adminFeedback' in incoming()) || incoming().adminFeedback == existing().get('adminFeedback', '')) &&
+                            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'summary', 'weeklyScheduleJson', 'dailyMealsJson', 'adjustmentNotes', 'version', 'updatedAt']))
+                         );
+        allow delete: if (isOwner(userId) || isAdmin()) && isValidId(userId) && isValidId(planId);
+      }
+    }
+
+    // 3. Global Exercise Library (Admin Managed)
+    match /exercises/{exerciseId} {
+      allow get: if isSignedIn() && isValidId(exerciseId);
+      allow list: if isSignedIn();
+      allow create: if isAdmin() &&
+                       isValidId(exerciseId) &&
+                       incoming().keys().hasAll(['nameEn', 'nameAr', 'descriptionEn', 'descriptionAr', 'targetMusclesEn', 'targetMusclesAr', 'difficulty', 'repsOrDuration', 'equipmentEn', 'equipmentAr', 'instructionsEn', 'instructionsAr', 'mistakesEn', 'mistakesAr', 'animationType', 'isActive', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['nameEn', 'nameAr', 'descriptionEn', 'descriptionAr', 'targetMusclesEn', 'targetMusclesAr', 'difficulty', 'repsOrDuration', 'equipmentEn', 'equipmentAr', 'instructionsEn', 'instructionsAr', 'mistakesEn', 'mistakesAr', 'animationType', 'isActive', 'createdAt', 'updatedAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidExerciseItem(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(exerciseId) &&
+                       isValidExerciseItem(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['nameEn', 'nameAr', 'descriptionEn', 'descriptionAr', 'targetMusclesEn', 'targetMusclesAr', 'difficulty', 'repsOrDuration', 'equipmentEn', 'equipmentAr', 'instructionsEn', 'instructionsAr', 'mistakesEn', 'mistakesAr', 'animationType', 'isActive', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(exerciseId);
+    }
+
+    // 4. Global Meal Library (Admin Managed)
+    match /meals/{mealId} {
+      allow get: if isSignedIn() && isValidId(mealId);
+      allow list: if isSignedIn();
+      allow create: if isAdmin() &&
+                       isValidId(mealId) &&
+                       incoming().keys().hasAll(['nameEn', 'nameAr', 'ingredientsEn', 'ingredientsAr', 'calories', 'proteinGrams', 'carbsGrams', 'fatsGrams', 'prepStepsEn', 'prepStepsAr', 'imageKey', 'category', 'isActive', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['nameEn', 'nameAr', 'ingredientsEn', 'ingredientsAr', 'calories', 'proteinGrams', 'carbsGrams', 'fatsGrams', 'prepStepsEn', 'prepStepsAr', 'imageKey', 'category', 'isActive', 'createdAt', 'updatedAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidMealItem(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(mealId) &&
+                       isValidMealItem(incoming()) &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['nameEn', 'nameAr', 'ingredientsEn', 'ingredientsAr', 'calories', 'proteinGrams', 'carbsGrams', 'fatsGrams', 'prepStepsEn', 'prepStepsAr', 'imageKey', 'category', 'isActive', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(mealId);
+    }
+
+    // 5. Configurable Plan Duration Templates (Admin Managed)
+    match /planTemplates/{templateId} {
+      allow get: if isSignedIn() && isValidId(templateId);
+      allow list: if isSignedIn();
+      allow create: if isAdmin() &&
+                       isValidId(templateId) &&
+                       incoming().keys().hasAll(['code', 'durationWeeks', 'titleEn', 'titleAr', 'descriptionEn', 'descriptionAr', 'isEnabled', 'sortOrder', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['code', 'durationWeeks', 'titleEn', 'titleAr', 'descriptionEn', 'descriptionAr', 'isEnabled', 'sortOrder', 'updatedAt']) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidPlanTemplate(incoming());
+      allow update: if isAdmin() &&
+                       isValidId(templateId) &&
+                       isValidPlanTemplate(incoming()) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['code', 'durationWeeks', 'titleEn', 'titleAr', 'descriptionEn', 'descriptionAr', 'isEnabled', 'sortOrder', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(templateId);
+    }
+
+    // 6. Coach Contact Requests
+    match /coachRequests/{requestId} {
+      allow get: if isSignedIn() && isValidId(requestId) && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       isValidId(requestId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().status == 'pending' &&
+                       incoming().keys().hasAll(['userId', 'userDisplayName', 'goalSummary', 'preferredContactMethod', 'status', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'userDisplayName', 'goalSummary', 'preferredContactMethod', 'notes', 'status', 'adminNotes', 'createdAt', 'updatedAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidTimestamp(incoming().updatedAt) &&
+                       isValidCoachRequest(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(requestId) &&
+                       isValidCoachRequest(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidTimestamp(incoming().updatedAt) && (
+                         (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'adminNotes', 'updatedAt'])) ||
+                         (existing().userId == request.auth.uid &&
+                          existing().status == 'pending' &&
+                          incoming().status == 'pending' &&
+                          (!('adminNotes' in incoming()) || incoming().adminNotes == existing().get('adminNotes', '')) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['goalSummary', 'preferredContactMethod', 'notes', 'updatedAt']))
+                       );
+      allow delete: if isSignedIn() && isValidId(requestId) && (isAdmin() || (existing().userId == request.auth.uid && existing().status == 'pending'));
+    }
+
+    // 7. Append-Only Admin Audit Logs
+    match /auditLogs/{logId} {
+      allow get: if isAdmin() && isValidId(logId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+                       isValidId(logId) &&
+                       incoming().actorUid == request.auth.uid &&
+                       incoming().keys().hasAll(['actorUid', 'actorEmail', 'action', 'targetCollection', 'targetId', 'summary', 'version', 'createdAt']) &&
+                       incoming().keys().hasOnly(['actorUid', 'actorEmail', 'action', 'targetCollection', 'targetId', 'summary', 'version', 'createdAt']) &&
+                       isValidTimestamp(incoming().createdAt) &&
+                       isValidAuditLog(incoming());
+      allow update, delete: if false;
+    }
+
+    // Admin collectionGroup access for reviewing user plans across users
+    match /{path=**}/plans/{planId} {
+      allow list, get: if isAdmin();
+    }
+  }
+}

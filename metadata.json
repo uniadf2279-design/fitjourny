@@ -1,0 +1,6 @@
+{
+  "name": "Fit Journey",
+  "description": "Cross-platform adult fitness, nutrition, PAR-Q health screening, AI workout & meal planning, progress tracking, and coach request app with bilingual Arabic RTL and English LTR support.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

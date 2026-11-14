@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator membership document keyed by Firebase Auth UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Admin user UID" },
+        "email": { "type": "string", "description": "Verified admin email" },
+        "grantedBy": { "type": "string", "description": "UID of granting admin" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp" }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Adult (18+) user fitness profile, PAR-Q health screening, and preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "age": { "type": "integer", "description": "User age (must be >= 18)" },
+        "heightCm": { "type": "number", "description": "Height in centimeters" },
+        "weightKg": { "type": "number", "description": "Current weight in kilograms" },
+        "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "athlete"] },
+        "fitnessGoal": { "type": "string", "enum": ["fat_loss", "muscle_gain", "endurance", "flexibility", "general_wellness"] },
+        "nutritionPreference": { "type": "string", "enum": ["balanced", "high_protein", "vegetarian", "mediterranean", "low_carb"] },
+        "experienceLevel": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "healthNotes": { "type": "string", "description": "Optional health constraints" },
+        "parqAnswers": { "type": "array", "description": "7 PAR-Q boolean screening responses" },
+        "parqFlagged": { "type": "boolean", "description": "True if any PAR-Q indicator is positive" },
+        "selectedPlanDurationWeeks": { "type": "integer", "description": "4, 8, 12, 26, or 52 weeks" },
+        "preferredLanguage": { "type": "string", "enum": ["ar", "en"] },
+        "themeMode": { "type": "string", "enum": ["system", "light", "dark"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "age", "heightCm", "weightKg", "activityLevel", "fitnessGoal", "nutritionPreference", "experienceLevel", "parqAnswers", "parqFlagged", "selectedPlanDurationWeeks", "preferredLanguage", "themeMode", "createdAt", "updatedAt"]
+    },
+    "WorkoutLog": {
+      "title": "WorkoutLog",
+      "description": "User workout adherence and activity log entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateIso": { "type": "string" },
+        "workoutTitle": { "type": "string" },
+        "durationMinutes": { "type": "integer" },
+        "caloriesBurned": { "type": "integer" },
+        "completed": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateIso", "workoutTitle", "durationMinutes", "caloriesBurned", "completed", "createdAt"]
+    },
+    "MeasurementLog": {
+      "title": "MeasurementLog",
+      "description": "User weight and optional body measurements record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "dateIso": { "type": "string" },
+        "weightKg": { "type": "number" },
+        "waistCm": { "type": "number" },
+        "chestCm": { "type": "number" },
+        "bodyFatPercent": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateIso", "weightKg", "createdAt"]
+    },
+    "FitnessPlan": {
+      "title": "FitnessPlan",
+      "description": "AI-generated personalized workout and nutrition plan subject to admin review.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "durationWeeks": { "type": "integer" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "weeklyScheduleJson": { "type": "string" },
+        "dailyMealsJson": { "type": "string" },
+        "adjustmentNotes": { "type": "string" },
+        "reviewStatus": { "type": "string", "enum": ["pending_review", "approved", "rejected", "needs_revision"] },
+        "adminFeedback": { "type": "string" },
+        "version": { "type": "integer" },
+        "parqSafetyNote": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "durationWeeks", "title", "summary", "weeklyScheduleJson", "dailyMealsJson", "reviewStatus", "version", "createdAt", "updatedAt"]
+    },
+    "ExerciseItem": {
+      "title": "ExerciseItem",
+      "description": "Bilingual exercise catalog item with animated motion type.",
+      "type": "object",
+      "properties": {
+        "nameEn": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "targetMusclesEn": { "type": "string" },
+        "targetMusclesAr": { "type": "string" },
+        "difficulty": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "repsOrDuration": { "type": "string" },
+        "equipmentEn": { "type": "string" },
+        "equipmentAr": { "type": "string" },
+        "instructionsEn": { "type": "string" },
+        "instructionsAr": { "type": "string" },
+        "mistakesEn": { "type": "string" },
+        "mistakesAr": { "type": "string" },
+        "animationType": { "type": "string", "enum": ["squat", "pushup", "plank", "lunge", "jumping_jack", "bridge"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameEn", "nameAr", "descriptionEn", "descriptionAr", "targetMusclesEn", "targetMusclesAr", "difficulty", "repsOrDuration", "equipmentEn", "equipmentAr", "instructionsEn", "instructionsAr", "mistakesEn", "mistakesAr", "animationType", "isActive", "createdAt", "updatedAt"]
+    },
+    "MealItem": {
+      "title": "MealItem",
+      "description": "Bilingual meal catalog item with macro breakdown.",
+      "type": "object",
+      "properties": {
+        "nameEn": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "ingredientsEn": { "type": "string" },
+        "ingredientsAr": { "type": "string" },
+        "calories": { "type": "integer" },
+        "proteinGrams": { "type": "integer" },
+        "carbsGrams": { "type": "integer" },
+        "fatsGrams": { "type": "integer" },
+        "prepStepsEn": { "type": "string" },
+        "prepStepsAr": { "type": "string" },
+        "imageKey": { "type": "string", "enum": ["protein_bowl", "salmon", "hero_fitness"] },
+        "category": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nameEn", "nameAr", "ingredientsEn", "ingredientsAr", "calories", "proteinGrams", "carbsGrams", "fatsGrams", "prepStepsEn", "prepStepsAr", "imageKey", "category", "isActive", "createdAt", "updatedAt"]
+    },
+    "PlanTemplate": {
+      "title": "PlanTemplate",
+      "description": "Admin-configurable plan duration template (4w, 8w, 12w, 6m, 12m).",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "enum": ["4w", "8w", "12w", "6m", "12m"] },
+        "durationWeeks": { "type": "integer" },
+        "titleEn": { "type": "string" },
+        "titleAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "isEnabled": { "type": "boolean" },
+        "sortOrder": { "type": "integer" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["code", "durationWeeks", "titleEn", "titleAr", "descriptionEn", "descriptionAr", "isEnabled", "sortOrder", "updatedAt"]
+    },
+    "CoachRequest": {
+      "title": "CoachRequest",
+      "description": "User request to be contacted by a fitness captain/coach for Admin review.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "goalSummary": { "type": "string" },
+        "preferredContactMethod": { "type": "string", "enum": ["in_app_note", "email", "phone_callback"] },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "in_review", "contacted", "closed"] },
+        "adminNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userDisplayName", "goalSummary", "preferredContactMethod", "status", "createdAt", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Append-only administrative revision and action audit trail.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string" },
+        "actorEmail": { "type": "string" },
+        "action": { "type": "string" },
+        "targetCollection": { "type": "string" },
+        "targetId": { "type": "string" },
+        "summary": { "type": "string" },
+        "version": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["actorUid", "actorEmail", "action", "targetCollection", "targetId", "summary", "version", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Trusted admin role registry"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Adult-only user profile and PAR-Q screening"
+    },
+    "/users/{userId}/workoutLogs/{logId}": {
+      "schema": { "$ref": "#/entities/WorkoutLog" },
+      "description": "User workout completion logs"
+    },
+    "/users/{userId}/measurements/{measurementId}": {
+      "schema": { "$ref": "#/entities/MeasurementLog" },
+      "description": "User weight and measurement logs"
+    },
+    "/users/{userId}/plans/{planId}": {
+      "schema": { "$ref": "#/entities/FitnessPlan" },
+      "description": "AI-generated personalized plans"
+    },
+    "/exercises/{exerciseId}": {
+      "schema": { "$ref": "#/entities/ExerciseItem" },
+      "description": "Global exercise library"
+    },
+    "/meals/{mealId}": {
+      "schema": { "$ref": "#/entities/MealItem" },
+      "description": "Global nutrition meal library"
+    },
+    "/planTemplates/{templateId}": {
+      "schema": { "$ref": "#/entities/PlanTemplate" },
+      "description": "Configurable plan durations"
+    },
+    "/coachRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/CoachRequest" },
+      "description": "Coach contact requests for admin review"
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable admin audit log"
+    }
+  }
+}
